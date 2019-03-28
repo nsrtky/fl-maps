@@ -1,6 +1,12 @@
 ![Focallocal logo](http://news.focallocal.org/wp-content/uploads/2015/02/focallocal-very-low-res1-min.png)
 
-This is the base branch for the new react-based fl-maps. All edits to either map are initially made in this master branch (fl-maps), and then pushed to the fl-sleeper branch after. All text and labels viewable to users must be defined in the i18n folder to be ready for multi-language support - this file is also used to define differences between both maps (focallocal.org and brightertomorrowmap.com)
+This is the base branch for the new react-based fl-maps project.
+
+All edits are initially made in this master branch (fl-maps), and then <b>copy/pasted into the fl-sleeper branch, and a separate PR made to the fl-sleeper branch</b> _(refer to note "Copying changes with git cherry-pick" under the "Workflow" section below, for how to automatically copy the changes across)_ unless they are in the i18n folder. We aim to keep the codebase identical as much as possible until the team expands.
+
+All text and labels viewable to users must be defined in [the i18n folder](https://github.com/focallocal/fl-maps/tree/master/imports/both/i18n) to be ready for multi-language support - this file is also used to define differences between both maps, The Public Happiness Platform at focallocal.org and Our Homelessness project at brightertomorrowmap.com. 
+
+When the active team grows the two codebases can diverge, if you'd like to lead/support one side or advertise for more devs to join our build, let Andy know.
 
 # Contribution Guide
 
@@ -28,6 +34,24 @@ https://trello.com/b/PFj7RlgM/focallocalorg
 https://focallocal.slack.com
 fl-master branch: https://focallocal.org
 fl-sleeper: https://brightertomorrowmap.com
+
+**Making Suggestions:** Please post suggested improvements in the meteor-maps channel in Slack so that other devs can comment their thoughts, suggestions, and keep track of changes in the codebase. If/when approved make an issue in Github ready for coding to begin.
+
+**Copying changes with git "git cherry-pick":** As mentioned above, changes to the codebase are done to the master branch and copy/pasted onto the fl-sleeper branch in a separate PR. Copy/pasting can be done directly through the CLI as follows:
+
+1. Make a note of your commit id in the master branch. Assuming the most recent commit is the one you want to copy:
+ 
+    `git log -1`
+
+2. Checkout the latest fl-sleeper branch onto which you want to copy across the changes
+
+    `git checkout <TARGET-BRANCH-NAME>`
+
+3. Use "git cherry-pick" to apply the exact insertions and deletions from your master branch commit, onto the target fl-sleeper branch that you have just checked out
+
+    `git cherry-pick <COMMIT ID>`
+
+4. This will copy across the changes without affecting any other files. In the very unlikely scenario there are conflicts you would need to resolve these before the cherry-pick executes. Note: if there is more than one commit to copy across, you need to include all relevant commit IDs in the command.
 
 ## Setting Up The Development Environment
 
@@ -82,6 +106,60 @@ fl-sleeper: https://brightertomorrowmap.com
 
 Currently you'll see a _**Compiled with warnings.**_ message, ignore it.
 
+#### ** Step (5) Warnings **
+For step (5) be sure you don't run `meteor npm install` twice. Just do it once followed by `npm run start` and it will work.
+
+<details><summary>Detailed Explanation</summary>
+If run twice you may get several warnings such as these:
+
+```
+npm WARN bootstrap@4.1.1 requires a peer of jquery@1.9.1 - 3 but none is installed. You must install peer dependencies yourself.
+  npm WARN react-google-maps@9.4.5 requires a peer of @types/googlemaps@^3.0.0 but none is installed. You must install peer dependencies yourself.
+  npm WARN react-google-maps@9.4.5 requires a peer of @types/markerclustererplus@^2.1.29 but none is installed. You must install peer dependencies yourself.
+  npm WARN react-google-maps@9.4.5 requires a peer of @types/react@^15.0.0 || ^16.0.0 but none is installed. You must install peer dependencies yourself.
+  npm WARN uniforms@1.24.3 requires a peer of graphql@>=0.8.2 <1.0.0 but none is installed. You must install peer dependencies yourself.
+  npm WARN optional SKIPPING OPTIONAL DEPENDENCY: fsevents@1.2.4 (node_modules/fsevents):
+  npm WARN notsup SKIPPING OPTIONAL DEPENDENCY: Unsupported platform for fsevents@1.2.4: wanted {"os":"darwin","arch":"any"} (current: {"os":"linux","arch":"x64"})
+
+```
+  
+If you try to install them by:
+```
+meteor npm install jquery @types/googlemaps@^3.0.0 @types/markerclustererplus@^2.1.29 @types/react@^16.0.0 graphql@0.13.2
+```
+
+... then during the `npm run start` step, compile will fail with errors such as these:
+```
+ERROR in ./imports/both/i18n/en/categories.json
+Module parse failed: Unexpected token < in JSON at position 149
+You may need an appropriate loader to handle this file type.
+SyntaxError: Unexpected token < in JSON at position 149
+...
+
+ERROR in chunk main [entry]
+...
+W20190111-19:03:18.261(8)? (STDERR)     ERROR in /home/sum/sum/job/remoteok/focallocal/fl-maps/node_modules/graphql/index.mjs
+2:0-49 Can't reexport the named export 'graphql' from non EcmaScript module (only default export is available)
+...
+W20190111-19:03:18.272(8)? (STDERR)     2:0-49 Can't reexport the named export 'graphqlSync' from non EcmaScript module (only default export is available)
+...
+W20190111-19:03:18.292(8)? (STDERR)     39:0-61:50 Can't reexport the named export 'DEFAULT_DEPRECATION_REASON' from non EcmaScript module (only default export is available)
+...
+W20190111-19:03:18.300(8)? (STDERR)     39:0-61:50 Can't reexport the named export 'GraphQLBoolean' from non EcmaScript module (only default export is available)
+
+```
+</details>
+
+#### ** Updating Node & npm **
+
+If you've tried the above, and things still aren't working you may need to update your version of node & npm. First, check your version of node by running `node -v`, and take note of it. The current version of node as of writing this is 11.9.0.
+
+To update node, install the package `n`, by running the command: `npm install -g n`. After the installation, run `n latest`. **note**: you may need to run `sudo n latest`, if on Mac or Linux.
+
+Updating npm is quite simple, the command being: `npm install -g npm`. 
+
+After updating the packages, close your current terminal and open a new one, so that the changes may take effect. Confirm the update by typing `node -v`.
+
 ## Working On Issues
 
 Issues can be found on our Trello board which gives a more visual representation of progress than Github. The two currently active lists on Trello will be the 1st version (example v0.1) reading from left to right, and also the Quick Bug Squashing List: [**Trello**](https://trello.com/b/PFj7RlgM/focallocalorg) and not github (use github only to open issues!).
@@ -91,6 +169,27 @@ Issues can be found on our Trello board which gives a more visual representation
 ### Outside Software
 
 The map utilizes Discourse for its forums and SSO. It will likely also use Discourse Messaging for notifications/users setting how often they receive notifications. The idea has been floated of also using it for users profiles, but that needs more discussion.
+
+Recently, the app layout has been changed so that the Discourse forum can be displayed side by side with the map (try the green vertical split bar). This has two advantages:
+1. Access to the forum is easier.
+2. A forum page can now be associated with a map element. For example, if you go to a map event and click "Photos", the right panel opens on a specific forum page where you can post photos. This feature is implemented using Docuss, a third-party software solution.
+<details>
+<summary>More About Docuss</summary>
+
+Docuss is composed of: 
+1. a [Discourse plugin](https://github.com/sylque/dcs-discourse-plugin), installed in our Discourse instance, and 
+2. a JavaScript library, for interacting with the plugin. 
+
+For example, this is how, from the Meteor app, you can change the forum url to the `dcs-foo` tag page:
+
+```js
+import { dcs } from "/imports/client/utils/dcs-master"
+dcs.gotoTag('dcs-foo')
+```
+
+Docuss is in prototype phase and lacks documentation. Please get in touch with @syl on Slack if you have any questions.
+
+</details>
 
 ---
 
@@ -230,3 +329,10 @@ We have our domain registered at Hihosting.co.uk, and the nameservers point to c
 Focallocal.org is building towards a decentralized community where anyone can join to work on projects and take action to build a friendlier happier and safer world around them. Its a hub for our volunteer community to coordinate, collaborate, and begin to grow. Its also not very good right now (i built most of it (Andy)) and it is fragmented.
 
 What it is, is a minimum functional platform to support a community who will redesign and improve it to meet their needs as they grow; its also a pool of skills, like marketing experts, graphic designers, etc, to contribute to both maps, and many other Public Happiness projects built by our community. Anyone joining in one of our projects to create a happier world is a member of the Focallocal Community and you're all also welcome to improve other areas of focallocal.org - it's your platform
+
+## Docus
+
+if you have any need to edit Docus, most files including home directory can be found here: https://github.com/focallocal/fl-maps/blob/master/imports/client/ui/app.js
+
+Its repo is here: https://github.com/sylque/dcs-discourse-plugin/issues
+and you need to tag @sylque in the repo to discuss development

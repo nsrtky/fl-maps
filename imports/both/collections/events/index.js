@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor'
 import { Mongo } from 'meteor/mongo'
 import SimpleSchema from 'simpl-schema'
-import { startingTime, endingTime, startingDate, endingDate, getHour, weekDays, determinePosition } from './helpers'
+import { startingTime, endingTime, startingDate, endingDate, getHour, weekDays, getDate, videoHosts } from './helpers'
 import possibleCategories from '/imports/both/i18n/en/categories.json'
 import labels from '/imports/both/i18n/en/new-event-modal.json'
 import DaySchema from './DaysSchema'
@@ -140,12 +140,32 @@ const EventsSchema = new SimpleSchema({
     ...startingDate,
     uniforms: {
       label: labels.active_from
-    }
+    },
+    optional: false
   },
   'when.endingDate': {
     ...endingDate,
     uniforms: {
       label: labels.active_until
+    },
+    optional: false,
+    // NOTE: catch 22... autoValue will not pre-populate form UI as it fires after submit
+    // defaultValue would work BUT including it will also fire this.isSet()
+    // meaning autoValue will never trigger correctly
+    // Solution: omit defaultValue and pre-populate form client-side via React
+    autoValue: function () {
+      const categories = this.field('categories').value
+      const specialCat = categories.some(e => {
+        return e.name === 'Community Offer' || e.name === 'Meet me for Action!'
+      })
+      if (!this.isSet && specialCat) {
+        let now = new Date()
+        return new Date(now.setFullYear(now.getFullYear() + 10))
+      } else if (!this.isSet && !specialCat) {
+        return getDate(3)
+      } else if (!this.isSet && this.siblingField('repeat').value) {
+        return getDate(3)
+      }
     }
   },
   'when.startingTime': {
@@ -253,7 +273,8 @@ const EventsSchema = new SimpleSchema({
     type: Array,
     optional: true,
     custom: function () {
-      if (this.siblingField('type') === 'week') {
+      const type = this.siblingField('type')
+      if (type.value === 'week') {
         const atLeastOneDay = !this.value || !this.value.join('')
         return atLeastOneDay ? 'required' : undefined
       }
@@ -292,16 +313,8 @@ const EventsSchema = new SimpleSchema({
   'when.recurring.monthly.value': {
     type: Number,
     autoValue: function () {
-      const type = this.siblingField('type')
-      let value = this.value
-      let dayInMonth = new Date().getDate()
-
-      if (type.value === 'byDayInMonth') {
-        value = (typeof value) === 'number' && value >= 0 ? value : dayInMonth
-        return value > 31 ? 31 : value < 1 ? 1 : value
-      } else {
-        value = (typeof value) === 'number' && value >= 0 ? value : Number(determinePosition(dayInMonth)[0])
-        return value > 4 ? 4 : value < 1 ? 1 : value
+      if (!this.value) {
+        return this.field('when.startingDate').value.getDate()
       }
     }
   },
@@ -328,23 +341,50 @@ const EventsSchema = new SimpleSchema({
     custom: function () {
       if (this.siblingField('forever').value) {
         return undefined
+      } else if (!this.value && !this.siblingField('until').value) {
+        return 'required'
       }
     },
     autoValue: function () {
       if (this.siblingField('forever').value) {
         return null
       }
+      if (this.siblingField('until').value) {
+        return null
+      }
+    }
+  },
+  'when.recurring.recurrenceEndDate': {
+    type: Date,
+    optional: true,
+    autoValue: function () {
+      const initialEndDate = this.field('when.endingDate').value
+        ? Date.parse(this.field('when.endingDate').value) : Date.parse(getDate(3))
+      const type = this.field('when.recurring.type').value
+      const skip = this.field('when.recurring.every').value
+      const occurences = this.field('when.recurring.occurences').value
+      let millisecondsPerPeriod = 24 * 60 * 60000
+      // check type of recurrence, and that a number of repetitions has been set (rather than an "until" date)
+      if (type === 'day' && occurences >= 1) return new Date(initialEndDate + (skip * occurences * millisecondsPerPeriod))
+      else if (type === 'week' && occurences >= 1) return new Date(initialEndDate + (skip * occurences * millisecondsPerPeriod * 7))
+      else if (type === 'month' && occurences >= 1) return new Date(initialEndDate + (skip * occurences * millisecondsPerPeriod * 365.25 / 12))
+      else return null
     }
   },
   'when.recurring.until': {
     type: Date,
-    optional: true
+    optional: true,
+    custom: function () {
+      if (!this.value && !this.siblingField('occurences').value && !this.siblingField('forever').value) {
+        return 'required'
+      }
+    }
   },
 
   // Description and More
   'overview': {
     type: String,
-    max: 150,
+    max: 300,
     uniforms: {
       customType: 'textarea',
       label: labels.overview
@@ -352,7 +392,7 @@ const EventsSchema = new SimpleSchema({
   },
   'description': {
     type: String,
-    max: 400,
+    max: 1000,
     uniforms: {
       customType: 'textarea',
       label: labels.description
@@ -386,6 +426,113 @@ const EventsSchema = new SimpleSchema({
   'engagement.attendees.$.name': {
     type: String,
     max: 120
+  },
+  'video': {
+    type: Object,
+    optional: true,
+    // defaultValue: {}
+  },
+
+  // NOTE: Following fields relate to video links added to the event mongodb document
+  // Attempted to create via an Array, but ran into difficulties with uniforms connecting to SimplSchema
+  // Consequently these have been written out as individual numbered fields...
+  // Someone more experienced with SimplSchema may wish to refactor in the future to limit code re-use
+  'video.link1': {
+    type: Object,
+    optional: true,
+    defaultValue: {}
+  },
+  'video.link1.host': {
+    optional: true,
+    type: String,
+    defaultValue: labels.video.host,
+    uniforms: {
+      customType: 'select',
+      label: null,
+      allowedValues: videoHosts.map((e) => `${e.host} (eg. ${e.prefix}<VIDEO_ID>)`),
+      selectOptions: {
+        url: true
+      },
+    }
+  },
+  'video.link1.address': {
+    optional: true,
+    type: String,
+    custom: function () {
+      if (this.value && this.value !== "") {
+        const host = this.siblingField('host').value.split(' (eg.')[0]  // <-- split out the 'example' at the end of host field text
+        const prefixServer = videoHosts.find(e => e.host === host).prefix
+        const prefixClient = this.value.slice(0, prefixServer.length)
+        if (prefixClient !== prefixServer) return 'required'
+      }
+    },
+    uniforms: {
+      label: null
+    }
+  },
+  'video.link2': {
+    type: Object,
+    optional: true
+  },
+  'video.link2.host': {
+    optional: true,
+    type: String,
+    defaultValue: labels.video.host,
+    uniforms: {
+      customType: 'select',
+      label: null,
+      allowedValues: videoHosts.map((e) => `${e.host} (eg. ${e.prefix}<VIDEO_ID>)`),
+      selectOptions: {
+        url: true
+      },
+    }
+  },
+  'video.link2.address': {
+    optional: true,
+    type: String,
+    custom: function () {
+      if (this.value && this.value !== "") {
+        const host = this.siblingField('host').value.split(' (eg.')[0]  // <-- split out the 'example' at the end of host field text
+        const prefixServer = videoHosts.find(e => e.host === host).prefix
+        const prefixClient = this.value.slice(0, prefixServer.length)
+        if (prefixClient !== prefixServer) return 'required'
+      }
+    },
+    uniforms: {
+      label: null
+    }
+  },
+  'video.link3': {
+    type: Object,
+    optional: true,
+  },
+  'video.link3.host': {
+    optional: true,
+    type: String,
+    defaultValue: labels.video.host,
+    uniforms: {
+      customType: 'select',
+      label: null,
+      allowedValues: videoHosts.map((e) => `${e.host} (eg. ${e.prefix}<VIDEO_ID>)`),
+      selectOptions: {
+        url: true
+      },
+    }
+  },
+  'video.link3.address': {
+    optional: true,
+    type: String,
+    custom: function () {
+      if (this.value && this.value !== "") {
+        const host = this.siblingField('host').value.split(' (eg.')[0]  // <-- split out the 'example' at the end of host field text
+        const prefixServer = videoHosts.find(e => e.host === host).prefix
+        const prefixClient = this.value.slice(0, prefixServer.length)
+        if (prefixClient !== prefixServer) return 'required'
+      }
+    },
+    uniforms: {
+      label: null
+    }
   },
   'createdAt': {
     type: Date,

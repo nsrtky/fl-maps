@@ -2,37 +2,20 @@
 $titles-color: #fff;
 
 #page {
-
+  
   .header {
     position: relative;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     height: 25vw;
     min-height: 250px;
     padding: 15px;
-    background: #f79d00;  /* fallback for old browsers */
-    background: -webkit-linear-gradient(to top, #00c362, #f79d00);  /* Chrome 10-25, Safari 5.1-6 */
-    background: linear-gradient(to top, #00c362, rgba(0, 0, 0, 0.35)); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
 
-    .title-wrapper {
-      width: 80%;
-      color: #fff;
-      font-weight: bolder;
-      word-wrap: break-word;
-      overflow: auto;
-    }
-
-    .title {
-      max-height: 156px;
-      font-size: 2.2rem;
-      overflow: auto;
-    }
-
-    .sub-title-categories {
-      max-height: 80px;
-      font-size: 1.4rem;
-      overflow: auto;
+    .subscribe {
+      align-self: flex-end;
+      z-index: 100;
+      right: 0;
     }
   }
 
@@ -43,8 +26,9 @@ $titles-color: #fff;
     color: #666A73;
 
     .row {
-      min-width: 100%;
+      width: 100%;
       justify-content: space-between;
+      word-wrap: break-word;
     }
 
     .section-title {
@@ -53,10 +37,31 @@ $titles-color: #fff;
     }
 
     /* --------------
-        Left Column 
+        Left Column
        -------------- */
 
     .left{
+
+      .title-wrapper {
+        width: 100%;
+        color: rgb(50, 52, 56);
+        font-weight: bolder;
+        word-wrap: break-word;
+        overflow: auto;
+      }
+
+      .title {
+        max-height: 156px;
+        font-size: 2.2rem;
+        overflow: auto;
+      }
+
+      .sub-title-categories {
+        max-height: 80px;
+        font-size: 1.4rem;
+        overflow: auto;
+      }
+
       .intro, .meet-me, .description{
         margin: 20px 0;
       }
@@ -68,9 +73,10 @@ $titles-color: #fff;
     .right {
       width: 300px;
       max-width: 300px;
+      padding-top: 15px;
 
       .hours-formatted {
-
+        
         .date {
           margin-bottom: 8px;
         }
@@ -79,14 +85,14 @@ $titles-color: #fff;
           display: flex;
           justify-content: space-between;
 
-          &>div:first-child {
+          & > div:first-child {
             margin-right: 0;
           }
         }
       }
 
       .location {
-
+        
         .view-map {
           color: #007bff;
           font-size: .9em;
@@ -98,14 +104,32 @@ $titles-color: #fff;
         width: 100%;
         margin-bottom: 8px;
       }
-
+      
     }
     /* ------------ End Right Column -------------- */
 
     // DOCUSS
     .dcs-selected {
       background-color: yellow;
-    }    
+    }
+    .dcs-badge {
+      display: inline-block;
+      border-radius: 10px;
+      padding: 3px 5px;
+      min-width: 8px;
+      vertical-align: middle;
+      margin-left: 5px;
+      color: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      text-align: center;
+      background-color: #bdbdbd;
+      /* Reset */
+      line-height: 1;
+      font-weight: normal;
+      white-space: nowrap;
+      text-indent: 0;
+    }
   }
 
   .divider {
@@ -120,10 +144,10 @@ $titles-color: #fff;
   }
 
   .fixed-bg {
-    background: $green !important;
+    background: $primary-blue !important;
 
     &.active {
-      background: $green-darker !important
+      background: $primary-blue-darker !important;
     }
   }
 
@@ -152,9 +176,9 @@ $titles-color: #fff;
   }
 
   @media screen and (max-width: 860px) {
-
+    
     & {
-
+      
       .header .title-wrapper {
         width: 95%;
       }
@@ -175,23 +199,24 @@ $titles-color: #fff;
   }
 
   @media screen and (max-width: 640px) {
-
+    
     & {
-
+      
       .title-wrapper {
-
+        
         .sub-title-categories {
           font-size: 1.2em;
         }
       }
 
       .body {
-
-
+        
+        
         .left, .right {
           max-width: 95%;
           flex: 0 0 100%;
           margin-bottom: 24px;
+          padding-right: 0;
         }
 
         .hours-formatted {
@@ -217,9 +242,9 @@ $titles-color: #fff;
   }
 
   @media screen and (max-width: 520px) {
-
+    
     & {
-
+      
       .body {
         width: 90%;
       }

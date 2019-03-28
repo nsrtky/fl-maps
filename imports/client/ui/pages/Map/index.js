@@ -29,7 +29,9 @@ class MapComponent_ extends Component {
       isFetching: true,
       showFilters: false,
       userLocation: null,
-      zoom: 3
+      zoom: 3,
+      mapRadius: null,
+      showPastEvents: false
     }
   }
 
@@ -65,6 +67,10 @@ class MapComponent_ extends Component {
     if (!prevState.userLocationError && userLocationError) {
       this.setState({ isFetching: false })
     }
+
+    if (prevState.showPastEvents !== this.state.showPastEvents) {
+      this.getEvents()
+    }
   }
 
   render () {
@@ -93,6 +99,7 @@ class MapComponent_ extends Component {
         defaultZoom={zoom}
         defaultOptions={mapOptions()}
         onZoomChanged={this.onZoomChanged}
+        onDragEnd={this.onDragEnd}
       >
 
         <MarkerClusterer
@@ -138,6 +145,8 @@ class MapComponent_ extends Component {
               <Input id='google-maps-searchbox' type="text" placeholder="Search" />
               <SearchButtons
                 toggleFilters={this.toggleFiltersList}
+                togglePastEvents={this.togglePastEvents}
+                showPastEvents={this.state.showPastEvents}
               />
             </Fragment>
           </StandaloneSearchBox>
@@ -182,6 +191,10 @@ class MapComponent_ extends Component {
   }
 
   removeCurrentEvent = () => this.setState({ currentEvent: null })
+
+  togglePastEvents = () => {
+    this.setState((state) => ({ showPastEvents: !state.showPastEvents }))
+  }
 
   setDirections = (destination) => {
     const {
@@ -258,7 +271,41 @@ class MapComponent_ extends Component {
   }
 
   onZoomChanged = () => {
-    this.setState({ zoom: this.map.getZoom() })
+    this.setState({
+      zoom: this.map.getZoom(),
+      mapRadius: this.getBoundsRadius(this.map.getBounds())
+    })
+
+    const center = this.map.getCenter()
+    this.getEvents({
+      lat: center.lat(),
+      lng: center.lng()
+    })
+  }
+
+  // Accept google map bounds object (coordinates) and calculates screen radius in metres
+  getBoundsRadius (bounds) {
+    // r = radius of the earth in km
+    const r = 6378.8
+    // degrees to radians (divide by 57.2958)
+    const ne_lat = bounds.getNorthEast().lat() / 57.2958
+    const ne_lng = bounds.getNorthEast().lng() / 57.2958
+    const c_lat = bounds.getCenter().lat() / 57.2958
+    const c_lng = bounds.getCenter().lng() / 57.2958
+    // distance = circle radius from center to Northeast corner of bounds
+    const r_km = r * Math.acos(
+      Math.sin(c_lat) * Math.sin(ne_lat) +
+      Math.cos(c_lat) * Math.cos(ne_lat) * Math.cos(ne_lng - c_lng)
+    )
+    return r_km * 1000 // radius in meters
+  }
+
+  onDragEnd = () => {
+    const center = this.map.getCenter()
+    this.getEvents({
+      lat: center.lat(),
+      lng: center.lng()
+    })
   }
 
   openMoreInfo = (event) => {
@@ -274,30 +321,49 @@ class MapComponent_ extends Component {
 
   getEvents = (location, skip = 0, limit = 30) => {
     const {
-      userLocation
+      userLocation,
+      mapRadius
     } = this.state
 
     const location_ = location || userLocation
+
+    // return events within 100km, or 120% of the screen radius, whichever is greater
+    const distance_ = Math.max(1.2 * mapRadius, 100000)
 
     if (location_) {
       const data = {
         skip,
         limit,
-        location: location_
+        location: location_,
+        distance: distance_
       }
 
       this.setState({ isFetching: true })
-      Meteor.call('Events.getEvents', data, (err, res) => {
-        if (!err) {
-          this.setState({
-            events: res,
-            filteredEvents: res
-          })
-          this.memoizeLocations = {} // reset caching
-        }
+      if (this.state.showPastEvents) {
+        Meteor.call('Events.getEvents', data, (err, res) => {
+          if (!err) {
+            this.setState({
+              events: res,
+              filteredEvents: res
+            })
+            this.memoizeLocations = {} // reset caching
+          }
 
-        this.setState({ isFetching: false })
-      })
+          this.setState({ isFetching: false })
+        })
+      } else {
+        Meteor.call('Events.getFutureEvents', data, (err, res) => {
+          if (!err) {
+            this.setState({
+              events: res,
+              filteredEvents: res
+            })
+            this.memoizeLocations = {} // reset caching
+          }
+
+          this.setState({ isFetching: false })
+        })
+      }
     }
   }
 }
